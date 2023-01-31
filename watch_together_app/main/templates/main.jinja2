@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+   
+
+    <head>
+        {% block head %}
+        <link rel="stylesheet" href="{{url_for('.static',filename='main.css')}}"/>
+        
+        <script type="text/javascript" src="//code.jquery.com/jquery-1.4.2.min.js"></script>
+        <script type="text/javascript" src="//cdn.socket.io/4.4.1/socket.io.min.js"></script>
+        <script type="text/javascript" charset="utf-8">
+
+        </script>
+        {% endblock %}
+      </head>
+<body>
+    
+    <div id="container">
+        <div class="error"> 
+            {% if get_flashed_messages()%}
+            {%for message in get_flashed_messages()%}
+            {{message}}
+            {%endfor%}
+            {% endif %}
+        </div>
+        <form id="create_room" method="POST" action='#'>
+            {{form.hidden_tag()}}
+            {{form.name}}
+            {{form.submit}}
+        </form>
+    </div>
+
+
+</body>
+</html>

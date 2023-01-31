@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+   
+
+    <head>
+        {% block head %}
+        <link rel="stylesheet" href="{{url_for('.static',filename='main.css')}}"/>
+        
+        <script type="text/javascript" src="//code.jquery.com/jquery-1.4.2.min.js"></script>
+        <script type="text/javascript" src="//cdn.socket.io/4.4.1/socket.io.min.js"></script>
+        <script type="text/javascript" charset="utf-8">
+            $(document).ready(function(){
+                var socket = io();
+                console.log("tesst")
+                socket.on('my_response', function(msg) {
+                    $('#log').append('<p>Received: ' + msg.data + '</p>');
+                });
+               
+                $('form#emit').submit(function(event) {
+                    socket.emit('my_event', {data:"dataa"});
+                    
+                    return false;
+                });
+
+                $('form#broadcast').submit(function(event) {
+                    socket.emit('my_broadcast_event', {data:"datataeae"});
+                    
+                    return false;
+                });
+                
+                socket.on('connect', function() {
+                    socket.emit('my_event', {data: 'I\'m connected!'});
+                    return false;
+                });
+
+            });
+        </script>
+        {% endblock %}
+      </head>
+<body>
+  
+<div id="log">
+    <form id="emit" method="POST" action='#'>
+        <input type="text" name="emit_data" id="emit_data" placeholder="Message">
+        <input type="submit" value="Echo">
+    </form>
+    <form id="broadcast" method="POST" action='#'>
+        <input type="text" name="broadcast_data" id="broadcast_data" placeholder="Message">
+        <input type="submit" value="Broadcast">
+    </form>
+    <form id="join_room" method="POST" action='#'>
+        <input type="submit" value="room1">
+    </form>
+</div>
+
+
+</body>
+
+</html>

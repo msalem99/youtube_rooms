@@ -3,7 +3,6 @@ from flask_socketio import SocketIO, emit
 from flask_session import Session
 from flask_redis import FlaskRedis
 from os import environ
-
 #initialize global libraries
 
 sess=Session()

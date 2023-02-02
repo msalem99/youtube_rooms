@@ -24,3 +24,4 @@ class DevConfig(Config):
     SESSION_TYPE = 'redis'
     SESSION_REDIS=redis.from_url(environ.get('REDIS_OM_URL'))
     REDIS_URL=environ.get('REDIS_OM_URL')
+    

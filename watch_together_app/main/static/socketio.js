@@ -6,8 +6,9 @@ $(window).bind("pageshow", function (event) {
 $(document).ready(initiateConnection());
 
 function initiateConnection() {
-  room_name = window.location.pathname.split("/").at(-1);
+  room_name = decodeURI(window.location.pathname.split("/").at(-1));
 
+  console.log(room_name);
   var socket = io(window.location.host, {
     rememberTransport: false,
     transports: ["websocket"],

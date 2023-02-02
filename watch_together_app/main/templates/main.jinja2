@@ -22,6 +22,12 @@
             {{message}}
             {%endfor%}
             {% endif %}
+            {% if form.name.errors%}
+            {%for error in form.name.errors%}
+            {{error}}
+            {%endfor%}
+            {% endif %}
+
         </div>
         <form id="create_room" method="POST" action='#'>
             {{form.hidden_tag()}}

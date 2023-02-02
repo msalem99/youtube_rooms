@@ -8,32 +8,9 @@
         
         <script type="text/javascript" src="//code.jquery.com/jquery-1.4.2.min.js"></script>
         <script type="text/javascript" src="//cdn.socket.io/4.4.1/socket.io.min.js"></script>
+        <script src="{{ url_for('.static', filename='socketio.js') }}" defer ></script>
         <script type="text/javascript" charset="utf-8">
-            $(document).ready(function(){
-                var socket = io();
-                console.log("tesst")
-                socket.on('my_response', function(msg) {
-                    $('#log').append('<p>Received: ' + msg.data + '</p>');
-                });
-               
-                $('form#emit').submit(function(event) {
-                    socket.emit('my_event', {data:"dataa"});
-                    
-                    return false;
-                });
-
-                $('form#broadcast').submit(function(event) {
-                    socket.emit('my_broadcast_event', {data:"datataeae"});
-                    
-                    return false;
-                });
-                
-                socket.on('connect', function() {
-                    socket.emit('my_event', {data: 'I\'m connected!'});
-                    return false;
-                });
-
-            });
+            
         </script>
         {% endblock %}
       </head>

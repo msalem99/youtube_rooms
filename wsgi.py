@@ -1,6 +1,7 @@
-from watch_together_app import init_app
+from watch_together_app import init_app,socketio
+
 
 app=init_app()
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000)
+    socketio.run(app)

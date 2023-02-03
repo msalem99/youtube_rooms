@@ -62,6 +62,7 @@ class MyNamespace(Namespace):
         room_name=session.get('room_name')
         if room_name:
             redis_client.lpush(room_name+"-queue",message['data'])
+          #  redis_client.publish(room_name+"-queue", message['data'])
             emit('my_response', {'data': message['data']}, to=room_name) 
               
         
@@ -97,24 +98,60 @@ def check_session_and_leave_room():
      
 
 def create_room_worker(room_name):
-    pubsub = redis_client.pubsub()
+    worker=SynchronizationWorker(room_name)
+    synch_worker=socketio.start_background_task(target=worker.work)
+    pubsub = redis_client.pubsub(ignore_subscribe_messages=True)
     #listen to redis for expiration of keys, if a room expires
     #that means the room's worker should also be terminated.
     redis_client.config_set('notify-keyspace-events', 'Ex')
     pubsub.psubscribe({"__keyevent@0__:expired"})
-
+    #pubsub.subscribe({room_name+'-queue'})
     while True:
-        eventlet.sleep(0.1)
+        eventlet.sleep(0.5)
         message = pubsub.get_message()
+        
         if type(message) is dict:
            try:
-            if str(message.get('data'),encoding='utf-8')==room_name:
-                #if the message sent by redis contains this room name
-                #terminate the background task
+            if str(message.get('data'),encoding='utf-8')==room_name: 
                 break
            except:
                pass
-        socketio.emit('my_response',
-                      {'data': room_name,},
-                      namespace='/',to=room_name)
+    #Once the create room worker loop terminates, the synchronization
+    #worker is also terminated, the room queue is deleted then pushed
+    #a flag that will enable the thread to get over blpop blocking.
+    worker.stop_work()
+    redis_client.delete(room_name+"-queue")
+    redis_client.lpush(room_name+"-queue","END_THREAD")
+    synch_worker.join()
+    del worker
+    print("Workers successfully terminated")
+    
+    
+    
+class SynchronizationWorker:
+    def __init__(self, room_name):
+        self.room_name = room_name
+        self.switch = True
+            
+    def work(self):
+        while self.switch:
+            pop=redis_client.blpop(self.room_name+"-queue")
+            print(pop)
+            if pop[1]==b'END_THREAD': break
+            x=10
+            while x>0 and self.switch:
+                eventlet.sleep(0.5)
+                x=x-0.5
+                socketio.emit('my_response',
+                        {'data': str(x),},
+                        namespace='/',to=self.room_name)
+    def stop_work(self):
+        self.switch=False
+    
+
+
+
+        
+        
+        
         

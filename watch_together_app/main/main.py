@@ -3,9 +3,9 @@ from .forms import create_room
 from flask_socketio import emit, join_room, leave_room,Namespace,disconnect
 from .. import socketio
 from .. import redis_client
-import eventlet
+from ..helper_functions import get_duration
+from .. import eventlet
 eventlet.monkey_patch()
-
 main_bp=Blueprint(
     "main_bp",__name__,
     template_folder='templates',
@@ -61,9 +61,12 @@ class MyNamespace(Namespace):
     def on_submit_video_event(self, message):
         room_name=session.get('room_name')
         if room_name:
-            redis_client.lpush(room_name+"-queue",message['data'])
+            if get_duration(message['data']) is None:
+                emit('my_response', {'data':"Please enter a valid youtube address"}, to=room_name)
+            else:
+                redis_client.lpush(room_name+"-queue",message['data'])
           #  redis_client.publish(room_name+"-queue", message['data'])
-            emit('my_response', {'data': message['data']}, to=room_name) 
+                emit('my_response', {'data': "Video added to queue successfully"}, to=room_name) 
               
         
     def on_connect(self):
@@ -116,6 +119,7 @@ def create_room_worker(room_name):
                 break
            except:
                pass
+        print("working")
     #Once the create room worker loop terminates, the synchronization
     #worker is also terminated, the room queue is deleted then pushed
     #a flag that will enable the thread to get over blpop blocking.
@@ -134,16 +138,15 @@ class SynchronizationWorker:
         self.switch = True
             
     def work(self):
-        while self.switch:
+        while True:
             pop=redis_client.blpop(self.room_name+"-queue")
-            print(pop)
             if pop[1]==b'END_THREAD': break
             x=10
             while x>0 and self.switch:
                 eventlet.sleep(0.5)
                 x=x-0.5
                 socketio.emit('my_response',
-                        {'data': str(x),},
+                        {'data': str(x)},
                         namespace='/',to=self.room_name)
     def stop_work(self):
         self.switch=False

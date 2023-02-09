@@ -3,6 +3,9 @@ from flask_socketio import SocketIO, emit
 from flask_session import Session
 from flask_redis import FlaskRedis
 from os import environ
+import eventlet
+eventlet.monkey_patch()
+
 #initialize global libraries
 
 sess=Session()
@@ -15,6 +18,7 @@ def init_app():
     app.config.from_object('config.DevConfig')
     sess.init_app(app)
     redis_client.init_app(app)
+    
     socketio.init_app(app,manage_session=False,message_queue=environ.get('REDIS_OM_URL'),logger=True)
     
     from .main import main

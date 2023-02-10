@@ -1,11 +1,12 @@
+from gevent import monkey,sleep; monkey.patch_all();
 from flask import Blueprint,render_template,session,url_for,redirect,request,flash,abort,copy_current_request_context
 from .forms import create_room
 from flask_socketio import emit, join_room, leave_room,Namespace,disconnect
 from .. import socketio
 from .. import redis_client
 from ..helper_functions import get_duration
-from .. import eventlet
-eventlet.monkey_patch()
+
+
 main_bp=Blueprint(
     "main_bp",__name__,
     template_folder='templates',
@@ -61,10 +62,12 @@ class MyNamespace(Namespace):
     def on_submit_video_event(self, message):
         room_name=session.get('room_name')
         if room_name:
-            if get_duration(message['data']) is None:
+            args=get_duration(message['data'])
+            if args is None:
                 emit('my_response', {'data':"Please enter a valid youtube address"}, to=room_name)
             else:
-                redis_client.lpush(room_name+"-queue",message['data'])
+                #queue format : videoDuration videoID
+                redis_client.lpush(room_name+"-queue",str(args[0])+" "+str(args[1]))
           #  redis_client.publish(room_name+"-queue", message['data'])
                 emit('my_response', {'data': "Video added to queue successfully"}, to=room_name) 
               
@@ -110,7 +113,7 @@ def create_room_worker(room_name):
     pubsub.psubscribe({"__keyevent@0__:expired"})
     #pubsub.subscribe({room_name+'-queue'})
     while True:
-        eventlet.sleep(0.5)
+        sleep(0.1)
         message = pubsub.get_message()
         
         if type(message) is dict:
@@ -141,12 +144,16 @@ class SynchronizationWorker:
         while True:
             pop=redis_client.blpop(self.room_name+"-queue")
             if pop[1]==b'END_THREAD': break
-            x=10
-            while x>0 and self.switch:
-                eventlet.sleep(0.5)
-                x=x-0.5
-                socketio.emit('my_response',
-                        {'data': str(x)},
+            y=pop[1].decode("utf-8").split(' ')
+            duration=float(y[0])
+            socketio.emit('start_video',
+                        {'data': str(y[1])},
+                        namespace='/',to=self.room_name)   
+            while duration>0 and self.switch:
+                sleep(0.5)
+                duration=duration-0.5
+                socketio.emit('synch_data',
+                        {'data': str([duration,y[1]])},
                         namespace='/',to=self.room_name)
     def stop_work(self):
         self.switch=False

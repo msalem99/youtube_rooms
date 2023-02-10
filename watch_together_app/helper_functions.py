@@ -1,11 +1,9 @@
-import eventlet
-from eventlet.green.urllib.request import urlopen
-eventlet.monkey_patch()
+from gevent import monkey; monkey.patch_all();
+from requests import get
 from os import environ
 import re
 import isodate
-import urllib.parse
-import json
+
 
 
 key = environ.get('YOUTUBE_API_KEY')  # from https://console.cloud.google.com/apis/credentials
@@ -29,14 +27,13 @@ def get_duration(url):
       'key': str(key)
   }
   try:
-      r = eventlet.spawn(urlopen, url + urllib.parse.urlencode(params))
-      my_dict=json.loads(r.wait().read())
-      items=my_dict.get('items')[0]
+      r = get(url, params)   
+      items=r.json().get('items')[0]
       dur=items.get('contentDetails').get('duration')
       dur = isodate.parse_duration(dur).total_seconds()
   except:
       return None
-  return dur if dur>0 else None # youtube api sets time to 0 if video is a livestream.
+  return (dur,id) if dur>0 else None # youtube api sets time to 0 if video is a livestream.
 
 
 

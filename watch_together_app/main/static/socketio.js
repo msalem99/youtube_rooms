@@ -17,6 +17,10 @@ function initiateConnection() {
   socket.on("my_response", function (msg) {
     $("#log").append("<p>Received: " + msg.data + "</p>");
   });
+  socket.on("start_video", function (msg) {
+    initiateYoutubePlayer(msg.data);
+    console.log(msg.data);
+  });
 
   $("form#emit").submit(function (event) {
     socket.emit("my_event", { data: "dataa" });
@@ -25,7 +29,6 @@ function initiateConnection() {
   });
 
   $("form#broadcast").submit(function (event) {
-    socket.emit("my_broadcast_event", { data: "datataeae" });
     socket.emit("submit_video_event", { data: $("#broadcast_data").val() });
     return false;
   });

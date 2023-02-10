@@ -1,4 +1,4 @@
-from watch_together_app import init_app,socketio
+from youtube_rooms import init_app,socketio
 
 
 app=init_app()

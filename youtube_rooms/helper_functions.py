@@ -6,7 +6,7 @@ import isodate
 
 
 
-key = environ.get('YOUTUBE_API_KEY')  # from https://console.cloud.google.com/apis/credentials
+key = environ.get('YOUTUBE_API_KEY')  
 
 def verify_youtube_video_and_return_id(url):
     regex1=re.compile("^((?:https?:)?\/\/)?((?:www|m)\.)?((?:youtube(-nocookie)?\.com|youtu.be))(\/(?:[\w\-]+\?v=|embed\/|v\/)?)([\w\-]+)(\S+)?$")   

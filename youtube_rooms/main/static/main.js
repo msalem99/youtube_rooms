@@ -2,7 +2,6 @@
 
 function initiateYoutubePlayer(videoId) {
   var tag = document.createElement("script");
-  tag.setAttribute("class", "youtubeAPI");
   tag.src = "https://www.youtube.com/iframe_api";
   var firstScriptTag = document.getElementsByTagName("script")[0];
   firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
@@ -36,10 +35,10 @@ function onPlayerReady(event) {
 // 5. The API calls this function when the player's state changes.
 //    The function indicates that when playing a video (state=1),
 //    the player should play for six seconds and then stop.
-var done = false;
-function onPlayerStateChange(event) {
-  console.log("change");
-}
-function stopVideo() {
-  player.stopVideo();
-}
+// var done = false;
+// function onPlayerStateChange(event) {
+//   console.log("change");
+// }
+// function stopVideo() {
+//   player.stopVideo();
+// }

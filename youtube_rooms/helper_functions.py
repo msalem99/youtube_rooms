@@ -9,6 +9,9 @@ import isodate
 key = environ.get('YOUTUBE_API_KEY')  
 
 def verify_youtube_video_and_return_id(url):
+    #regex1 ensures that the link is a valid youtube video
+    #regex2 extracts the id after ensuring its also a valid youtube video
+    #2 regexes are used for extra verification
     regex1=re.compile("^((?:https?:)?\/\/)?((?:www|m)\.)?((?:youtube(-nocookie)?\.com|youtu.be))(\/(?:[\w\-]+\?v=|embed\/|v\/)?)([\w\-]+)(\S+)?$")   
     if regex1.search(url):
         regex2 = re.compile("^.*(?:(?:youtu\.be\/|v\/|vi\/|u\/\w\/|embed\/|shorts\/)|(?:(?:watch)?\?v(?:i)?=|\&v(?:i)?=))([^#\&\?]*).*")
@@ -35,5 +38,6 @@ def get_duration(url):
       return None
   return (dur,id) if dur>0 else None # youtube api sets time to 0 if video is a livestream.
 
-
+def get_current_time():
+    return float(time.time())
 

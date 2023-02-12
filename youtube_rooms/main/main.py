@@ -5,7 +5,7 @@ from flask_socketio import emit, join_room, leave_room,Namespace,disconnect,clos
 from .. import socketio
 from .. import redis_client
 from ..helper_functions import get_duration,get_current_time
-  
+
 from redis import RedisError 
 
 
@@ -30,7 +30,7 @@ def index():
                 #set expiration time, this expiration is
                 #removed once a user joins the room.
                 redis_client.sadd(room_name,' ')
-                redis_client.expire(room_name,1000)
+                redis_client.expire(room_name,500)
                 #start the worker that will be responsible for
                 #synchronization between room members.
                 socketio.start_background_task(target=create_room_worker,room_name=room_name)  
@@ -40,7 +40,7 @@ def index():
         flash("Room name already exists, please try another name.")
     return render_template('main.jinja2',form=form)
 
-@main_bp.route('/room/<string:room_name>')
+@main_bp.route('/room/<string:room_name>',methods=['POST','GET'])
 def room(room_name):
     room_name=room_name+"-room"
     try:
@@ -56,34 +56,38 @@ def default_error_handler(e):
     print(e) 
     print(request.event["message"])
     print(request.event["args"])   
-    socketio.stop()
 class MyNamespace(Namespace):
  
     #If the room exists, allow the user to join and save it to 
     #the user session.    
     def on_set_room_name_event(self, message):
-        room_name=message['data']+"-room"
+        room_name=message.get('room_name')+"-room"
         if redis_client.exists(room_name):
-            session['room_name']=room_name
-            check_session_and_join_room()
+            # session['room_name']=room_name
+            check_session_and_join_room(room_name)
             return
         return disconnect(request.sid)
     
     def on_submit_video_event(self, message):
-        
-        room_name=session.get('room_name')
-        if room_name:
-            args=get_duration(message['data'])
+        room_name=message.get('room_name')+"-room"
+        if redis_client.exists(room_name):
+            args=get_duration(message.get('data'))
             if args is None:
                 emit('my_response', {'data':"Please enter a valid youtube address"}, to=request.sid)
+                return
             else:
                 #queue format : videoDuration videoID
                 redis_client.lpush(room_name+"-queue",str(args[0])+" "+str(args[1]))
-                emit('my_response', {'data': "Video added to queue successfully"}, to=request.sid) 
+                emit('my_response', {'data': "Video added to queue successfully"}, to=request.sid)
+                return
+        return disconnect(request.sid) 
+                
     def on_sync_data(self, message):
-        room_name=session.get('room_name')
-        if room_name:
-           redis_client.publish(room_name,request.sid+" "+str(1))                   
+        room_name=message.get('room_name')+"-room"
+        if redis_client.exists(room_name):
+           redis_client.publish(room_name,request.sid+" "+"sync_video")
+           return
+        disconnect(request.sid)                   
         
     def on_connect(self):
         emit('my_response', {'data': 'Connected'})
@@ -102,26 +106,28 @@ socketio.on_namespace(MyNamespace('/'))
 
 
 
-def check_session_and_join_room():
-    room_name=session.get('room_name')
-    if room_name: 
+def check_session_and_join_room(room_name):
+    # room_name=session.get('room_name')
+    # if room_name: 
         join_room(room_name)
+        session[request.sid]=room_name
         redis_client.persist(room_name)
-        redis_client.sadd(room_name,session.sid)
-        redis_client.publish(room_name,request.sid+" "+str(0))
+        redis_client.sadd(room_name,request.sid)
+        redis_client.publish(room_name,request.sid+" "+"start_video")
         return
-    return disconnect(request.sid)
+    # return disconnect(request.sid)
     
 
 def check_session_and_leave_room():
-    room_name=session.get('room_name')
-    if room_name: 
+    room_name=session.get(request.sid)
+    if room_name:
         leave_room(room_name)
-        session.pop('room_name')
+        session.pop(request.sid)
             #problem: if redis fails here then the room will be dormant in redis database with no way to delete
-        redis_client.srem(room_name,session.sid)
+        redis_client.srem(room_name,request.sid)
         if redis_client.scard(room_name) == 1:
-            redis_client.expire(room_name,10)
+            redis_client.expire(room_name,500)
+    return
 
      
 
@@ -163,32 +169,32 @@ def create_room_worker(room_name):
             message = pubsub.get_message()
         except RedisError:
             break
+        
         if type(message) is dict:
-           try:
             if str(message.get('data'),encoding='utf-8')==room_name: 
                 break
-           except:
-               pass
-           try:
+
             if str(message.get('channel'),encoding='utf-8')==room_name and worker.current_video is not None:
-                #the message contains the request sid and the flag seperated by a space.
-                sid=str(message.get('data'),encoding='utf-8').split(" ")[0]
-                flag=str(message.get('data'),encoding='utf-8').split(" ")[1]
-                #The flag is read by the client side to determine if only sync is required or if the whole 
-                #video should be initiated
-                video_data=str(str(worker.current_video)+' '+str(worker.current_video_timestamp)+" "+str(flag))
-                socketio.emit('start_video_or_sync',
-                        {'data': video_data},
-                        namespace='/',to=sid)
-           except:
-               pass
+                #the message contains the request sid and the event name to be emitted seperated by a space.
+                [room_name_or_sid,event_name]=str(message.get('data'),encoding='utf-8').split(" ")
+                #The event_name could be used in  the client side to decide if a new video is being loaded
+                #or to just sync data.
+                #event_name could be sync_data or start_video.
+                socketio.emit(event_name,
+                            {'current_video':worker.current_video,
+                            'time_stamp':worker.current_video_timestamp},
+                            namespace='/',
+                            to=room_name_or_sid)
+ 
                       
            
             
         
     #Once the create room worker loop terminates, the synchronization
-    #worker is also terminated, the room queue is deleted then pushed
-    #a flag that will enable the worker to get over blpop blocking.
+    #worker is also terminated by deleting the room queue then pushing
+    #a flag "END_THREAD" that will enable the synchronization worker to
+    #exit the loop and join()
+    pubsub.close()
     worker.stop_work()
     try:
         #problem: if redis fails the room queue will persist in database with no way to delete.
@@ -213,18 +219,17 @@ class SynchronizationWorker:
         #2 loops, one pops the video queue and the other updates the 
         #video timestamp for synchronization purposes.
         while True:
-            pop=redis_client.blpop(self.room_name+"-queue")
+            try:
+                pop=redis_client.blpop(self.room_name+"-queue")
+            except:
+                break
             if pop[1]==b'END_THREAD': break
             self.current_video_timestamp=0
             y=pop[1].decode("utf-8").split(' ')
             self.current_video=str(y[1])
             self.video_duration=float(y[0])
-            video_data=str(str(self.current_video)+' '+str(self.current_video_timestamp)+" "+"0")
-            
-            socketio.emit('start_video_or_sync',
-                        {'data': video_data},
-                        namespace='/',to=self.room_name)
-            print("here")
+            #publishing to the channel to indicate to the other worker to emit the new video
+            redis_client.publish(self.room_name,self.room_name+" "+"start_video")
             sleep(2)
             time_to_end=get_current_time()+self.video_duration+4
             start_time=get_current_time()

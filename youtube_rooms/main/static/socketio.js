@@ -7,8 +7,8 @@ $(document).ready(initiateConnection());
 
 function initiateConnection() {
   room_name = decodeURI(window.location.pathname.split("/").at(-1));
-
-  var socket = io(window.location.host, {
+  console.log(window.location.host);
+  var socket = io("http://192.168.1.114:5000", {
     rememberTransport: false,
     transports: ["websocket"],
   });
@@ -17,37 +17,39 @@ function initiateConnection() {
     $("#log").append("<p>Received: " + msg.data + "</p>");
   });
 
-  socket.on("start_video_or_sync", function (msg) {
-    videoData = msg.data.split(" ");
-
-    if (videoData.at(-1) == "0") {
-      youtubeVideo.removeIframeAndAddEmptyDiv();
-      let video = new youtubeVideo(videoData[0], videoData[1], socket);
-      window.video = video;
-      if (window.isYoutubeApiLoaded) {
-        video.loadVideo();
-      } else {
-        //Youtube api calls onYouTubeIframeAPIReady by default once it loads.
-        youtubeVideo.loadYoutubeApi();
-      }
+  socket.on("start_video", function (msg) {
+    youtubeVideo.removeIframeAndAddEmptyDiv();
+    let video = new youtubeVideo(msg.current_video, msg.time_stamp, socket);
+    window.video = video;
+    if (window.isYoutubeApiLoaded) {
+      video.loadVideo();
     } else {
-      video.goTo(videoData[1]);
+      //Youtube api calls onYouTubeIframeAPIReady by default once it loads.
+      youtubeVideo.loadYoutubeApi();
     }
   });
+  socket.on("sync_video", function (msg) {
+    video.goTo(msg.time_stamp);
+  });
   $("form#emit").submit(function (event) {
-    socket.emit("my_event", { data: "dataa" });
+    socket.emit("my_event", { room_name: room_name });
 
     return false;
   });
 
   $("form#broadcast").submit(function (event) {
-    socket.emit("submit_video_event", { data: $("#broadcast_data").val() });
+    socket.emit("submit_video_event", {
+      data: $("#broadcast_data").val(),
+      room_name: room_name,
+    });
     return false;
   });
 
   socket.on("connect", function () {
-    socket.emit("my_event", { data: "I'm connected!" });
-    socket.emit("set_room_name_event", { data: room_name });
+    socket.emit("set_room_name_event", {
+      data: room_name,
+      room_name: room_name,
+    });
 
     return false;
   });
@@ -80,7 +82,7 @@ class youtubeVideo {
   onPlayerReady(event) {
     event.target.mute();
     event.target.playVideo();
-    this.socket.emit("sync_data", { data: "sync me" });
+    this.socket.emit("sync_data", { data: "sync me", room_name: room_name });
   }
   onPlayerStateChange(event) {
     event.target.unMute();
@@ -93,7 +95,7 @@ class youtubeVideo {
       (this.previousAndCurrentState[0] == -1 &&
         this.previousAndCurrentState[1] == 1)
     ) {
-      this.socket.emit("sync_data", { data: "sync me" });
+      this.socket.emit("sync_data", { data: "sync me", room_name: room_name });
     }
   }
   goTo(time) {

@@ -3,7 +3,7 @@ from requests import get
 from os import environ
 import re
 import isodate
-
+import time
 
 
 key = environ.get('YOUTUBE_API_KEY')  

@@ -12,6 +12,7 @@ function initiateConnection() {
     rememberTransport: false,
     transports: ["websocket"],
   });
+  window.socket = socket;
 
   socket.on("my_response", function (msg) {
     $("#log").append("<p>Received: " + msg.data + "</p>");
@@ -31,11 +32,6 @@ function initiateConnection() {
   socket.on("sync_video", function (msg) {
     video.goTo(msg.time_stamp);
   });
-  $("form#emit").submit(function (event) {
-    socket.emit("my_event", { room_name: room_name });
-
-    return false;
-  });
 
   $("form#broadcast").submit(function (event) {
     socket.emit("submit_video_event", {
@@ -43,6 +39,10 @@ function initiateConnection() {
       room_name: room_name,
     });
     return false;
+  });
+
+  socket.on("chat_message", function (msg) {
+    createMessageDiv(msg.username, msg.chat_message);
   });
 
   socket.on("connect", function () {
@@ -54,6 +54,9 @@ function initiateConnection() {
     return false;
   });
 }
+///////////////////////////////////////////////////////////////////////////
+///////////////////////Youtube API////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////
 class youtubeVideo {
   constructor(videoId, videoTimeStamp, socket) {
     this.socket = socket;
@@ -65,8 +68,8 @@ class youtubeVideo {
   }
   loadVideo() {
     this.player = new YT.Player("player", {
-      height: "390",
-      width: "640",
+      height: "600",
+      width: "800",
       videoId: this.videoId,
       playerVars: {
         origin: "https://localhost:5000",
@@ -90,6 +93,7 @@ class youtubeVideo {
     this.previousAndCurrentState.push(event.data);
 
     if (
+      //if the user pauses then resumes the video, sync the video
       (this.previousAndCurrentState[0] == 2 &&
         this.previousAndCurrentState[1] == 1) ||
       (this.previousAndCurrentState[0] == -1 &&
@@ -113,10 +117,59 @@ class youtubeVideo {
   }
   static removeIframeAndAddEmptyDiv() {
     $("#player").remove();
-    $("body").prepend(
+    $(".left__side").prepend(
       jQuery("<div>", {
         id: "player",
       })
     );
   }
+}
+
+///////////////////////////////////////////////////////////////////////////
+///////////////////////chat functions/////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////
+$(".chat__send__message__input").keydown(function (e) {
+  if (e.keyCode === 13) {
+    //myUsername is sent by the server through the jinja template room.jinja2
+    createMessageDiv(myUsername, $(".chat__send__message__input").val());
+    socket.emit("chat_message", {
+      chat_message: $(".chat__send__message__input").val(),
+      room_name: room_name,
+    });
+  }
+});
+
+$(".send__message__svg").click(function (e) {
+  //myUsername is sent by the server through the jinja template room.jinja2
+  createMessageDiv(myUsername, $(".chat__send__message__input").val());
+  socket.emit("chat_message", {
+    chat_message: $(".chat__send__message__input").val(),
+    room_name: room_name,
+  });
+});
+
+function createMessageDiv(username, message) {
+  //create a div containing 3 spans for the timestamp,username and message
+  messageDiv = document.createElement("div");
+  jQuery("<span>", {
+    class: "message__timestamp",
+    text: getTimestamp(),
+  }).appendTo(messageDiv);
+  jQuery("<span>", {
+    class: "message__username",
+    text: String(username),
+  }).appendTo(messageDiv);
+  jQuery("<span>", {
+    class: "message__text",
+    text: String(message),
+  }).appendTo(messageDiv);
+  console.log(messageDiv);
+  $(messageDiv).addClass("chat__message__unit");
+  $(messageDiv).appendTo($(".chat__messages"));
+}
+
+function getTimestamp() {
+  let currDate = new Date();
+  let hoursMin = currDate.getHours() + ":" + currDate.getMinutes();
+  return String(hoursMin);
 }

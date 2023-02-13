@@ -4,34 +4,43 @@
 
     <head>
         {% block head %}
+
         <link rel="stylesheet" href="{{url_for('.static',filename='main.css')}}"/>
         
         <script type="text/javascript" src="//code.jquery.com/jquery-1.4.2.min.js"></script>
+
         <script src="https://cdn.socket.io/4.6.0/socket.io.min.js" integrity="sha384-c79GN5VsunZvi+Q/WObgk2in0CbZsHnjEqvFxC5DxHn9lTfNce2WW6h2pH6u/kF+" crossorigin="anonymous"></script>
+        <script type="text/javascript">
+            var myUsername = '{{ data.username }}'
+        </script>
         <script src="{{ url_for('.static', filename='socketio.js') }}" defer ></script>
        
-        <script type="text/javascript" charset="utf-8">
-            
-        </script>
+
         {% endblock %}
       </head>
 <body>
+    <div class="wrapper">
+        <div class="left__side">
     <div id="player"></div> 
-<div id="log">
-    <form id="emit" method="POST" action='#'>
-        <input type="text" name="emit_data" id="emit_data" placeholder="Message">
-        <input type="submit" value="Echo">
-    </form>
+
     <form id="broadcast" method="POST" action='#'>
         <input type="text" name="broadcast_data" id="broadcast_data" placeholder="Message">
         <input type="submit" value="Broadcast">
     </form>
-    <form id="join_room" method="POST" action='#'>
-        <input type="submit" value="room1">
-    </form>
+
 </div>
-
-
+<div class="chat__wrapper">
+    <div class="chat__header">
+      <h2>Live Chat</h2>
+    </div>
+    <div class="chat__messages">
+    </div>
+    <div class="chat__send__message">
+       <input class="chat__send__message__input" type="text" placeholder="Type something...">
+      <img src="https://www.svgrepo.com/download/469753/send.svg" alt="send" class="send__message__svg">
+    </div>
+  </div>
+</div>
 
 </body>
 

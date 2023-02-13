@@ -20,7 +20,7 @@ main_bp=Blueprint(
 
 @main_bp.route('/',methods=['POST','GET'])
 def index():
-    form=create_room()
+    form=create_room('username')
     
     if form.validate_on_submit():
         room_name=form.name.data+"-room"
@@ -43,11 +43,25 @@ def index():
 @main_bp.route('/room/<string:room_name>',methods=['POST','GET'])
 def room(room_name):
     room_name=room_name+"-room"
+    form=create_room('username')
+    if form.validate_on_submit():session['username']=form.name.data
+    
     try:
         if redis_client.exists(room_name):
-            return render_template('room.jinja2')
+            if session.get('username') is None:
+                return render_template("main.jinja2",form=form)
+            
+            return render_template('room.jinja2',data = {'username': session.get("username")})
     except RedisError: abort(503,"Service currently down")
     abort(404,"Room doesn't exist")
+
+
+
+
+
+#socket io events
+
+
 
 
 #socket io error handler
@@ -70,7 +84,7 @@ class MyNamespace(Namespace):
     
     def on_submit_video_event(self, message):
         room_name=message.get('room_name')+"-room"
-        if redis_client.exists(room_name):
+        if session.get(request.sid)==room_name:
             args=get_duration(message.get('data'))
             if args is None:
                 emit('my_response', {'data':"Please enter a valid youtube address"}, to=request.sid)
@@ -84,10 +98,17 @@ class MyNamespace(Namespace):
                 
     def on_sync_data(self, message):
         room_name=message.get('room_name')+"-room"
-        if redis_client.exists(room_name):
+        if session.get(request.sid)==room_name:
            redis_client.publish(room_name,request.sid+" "+"sync_video")
            return
         disconnect(request.sid)                   
+    def on_chat_message(self,message):
+        room_name=message.get('room_name')+"-room"
+        if session.get(request.sid)==room_name:
+                emit('chat_message', {'chat_message': message.get('chat_message'),'username':session.get('username')}, to=room_name,include_self=False)
+
+                              
+
         
     def on_connect(self):
         emit('my_response', {'data': 'Connected'})
@@ -133,7 +154,7 @@ def check_session_and_leave_room():
 
 
 #room workers
-#Each room consists of 2 workers, 1 is responsible for listening
+#Each room consists of 2 workers, the first is responsible for listening
 #to the redis channels, there are 2 channels the worker is listening 
 #to : 
 #     1- Expiration channel: If the room expires, the worker terminates
@@ -142,7 +163,7 @@ def check_session_and_leave_room():
 #     2- A channel named after the room name.: This channel recieves messages
 #                             in two cases, the first is when a user joins 
 #                             an existing room, refer to check_session_and_join_room()
-#                             the second is when the client sends a sync_data event.
+#                             the second is when the client sends a sync_video event.
 #                             refer to  on_sync_data(self, message) event
 #
 #
@@ -178,7 +199,7 @@ def create_room_worker(room_name):
                 #the message contains the request sid and the event name to be emitted seperated by a space.
                 [room_name_or_sid,event_name]=str(message.get('data'),encoding='utf-8').split(" ")
                 #The event_name could be used in  the client side to decide if a new video is being loaded
-                #or to just sync data.
+                #or to just sync data. 2 events are used instead of only one for convenience on the client side.
                 #event_name could be sync_data or start_video.
                 socketio.emit(event_name,
                             {'current_video':worker.current_video,

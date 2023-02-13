@@ -120,3 +120,80 @@ body {
   background-color: var(--background-color);
   color: white;
 }
+.wrapper {
+  display: flex;
+}
+
+.chat__wrapper {
+  width: 30%;
+  background-color: #15172b;
+  height: 100vh;
+
+  display: flex;
+  flex-direction: column;
+  padding: 1rem;
+  margin-left: auto;
+}
+.left__side {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-around;
+  align-items: center;
+  margin-left: 5rem;
+}
+.chat__header {
+  text-align: center;
+  margin-bottom: 1rem;
+}
+.chat__messages {
+  width: 100%;
+  height: 100%;
+
+  background-color: #15172b;
+}
+.chat__send__message {
+  width: 100%;
+  display: flex;
+  align-items: center;
+}
+.chat__send__message__input {
+  width: 100%;
+  background-color: #303245;
+  border-radius: 12px;
+  border: 0;
+  color: #eee;
+
+  outline: 0;
+  padding: 1rem 1rem;
+  margin-right: -2rem;
+}
+.chat__messages {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+}
+
+.even {
+  background: #171717;
+}
+.odd {
+}
+.chat__message__unit {
+  padding: 3px 5px;
+}
+.message__timestamp {
+  color: #626a6f;
+  margin-right: 0.1em;
+}
+.message__username {
+  font-weight: 900;
+}
+.message__text {
+  margin-left: 0.1em;
+  color: #bbb7ab;
+}
+.send__message__svg {
+  width: 2rem;
+  height: 2rem;
+  cursor: pointer;
+}

@@ -1,17 +1,24 @@
 $(window).bind("pageshow", function (event) {
   if (event.originalEvent.persisted) {
+    console.log("test");
+    socket.disconnect();
+    socket = null;
     initiateConnection();
   }
 });
 $(document).ready(initiateConnection());
 
 function initiateConnection() {
+  console.log(socket);
   room_name = decodeURI(window.location.pathname.split("/").at(-1));
   console.log(window.location.host);
-  var socket = io("http://192.168.1.114:5000", {
-    rememberTransport: false,
-    transports: ["websocket"],
-  });
+  var socket = io(
+    `${window.location.host}?room_name=${room_name}&websocket_csrf=${websocket_csrf}`,
+    {
+      rememberTransport: false,
+      transports: ["websocket"],
+    }
+  );
   window.socket = socket;
 
   socket.on("my_response", function (msg) {
@@ -32,6 +39,11 @@ function initiateConnection() {
   socket.on("sync_video", function (msg) {
     video.goTo(msg.time_stamp);
   });
+  $("form#emit").submit(function (event) {
+    socket.emit("my_event", { room_name: room_name });
+
+    return false;
+  });
 
   $("form#broadcast").submit(function (event) {
     socket.emit("submit_video_event", {
@@ -43,6 +55,7 @@ function initiateConnection() {
 
   socket.on("chat_message", function (msg) {
     createMessageDiv(msg.username, msg.chat_message);
+    console.log(msg);
   });
 
   socket.on("connect", function () {
@@ -59,9 +72,10 @@ function initiateConnection() {
 /////////////////////////////////////////////////////////////////////////
 class youtubeVideo {
   constructor(videoId, videoTimeStamp, socket) {
+    console.log(videoId);
     this.socket = socket;
     this.player = null;
-    this.videoId = videoId || videoData;
+    this.videoId = videoId;
     window.onYouTubeIframeAPIReady = this.loadVideo.bind(this);
     this.seek = Math.round(parseInt(videoTimeStamp)) || 0;
     this.previousAndCurrentState = [-1, -1];
@@ -85,7 +99,7 @@ class youtubeVideo {
   onPlayerReady(event) {
     event.target.mute();
     event.target.playVideo();
-    this.socket.emit("sync_data", { data: "sync me", room_name: room_name });
+    this.socket.emit("sync_data", { data: "", room_name: room_name });
   }
   onPlayerStateChange(event) {
     event.target.unMute();
@@ -99,7 +113,7 @@ class youtubeVideo {
       (this.previousAndCurrentState[0] == -1 &&
         this.previousAndCurrentState[1] == 1)
     ) {
-      this.socket.emit("sync_data", { data: "sync me", room_name: room_name });
+      this.socket.emit("sync_data", { data: "", room_name: room_name });
     }
   }
   goTo(time) {
@@ -134,7 +148,6 @@ $(".chat__send__message__input").keydown(function (e) {
     createMessageDiv(myUsername, $(".chat__send__message__input").val());
     socket.emit("chat_message", {
       chat_message: $(".chat__send__message__input").val(),
-      room_name: room_name,
     });
   }
 });
@@ -149,7 +162,7 @@ $(".send__message__svg").click(function (e) {
 });
 
 function createMessageDiv(username, message) {
-  //create a div containing 3 spans for the timestamp,username and message
+  //create a div containing 3 spans for the message data
   messageDiv = document.createElement("div");
   jQuery("<span>", {
     class: "message__timestamp",

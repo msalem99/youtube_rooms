@@ -25,5 +25,8 @@ class create_room(FlaskForm):
         regex = re.compile('[@_!#$%^&*()<>?/\|}{~:]')
         if not regex.search(self.name.data) == None:
             raise ValidationError(self.myParam+" can not contain special characters.")
+        
+class csrf(FlaskForm):
+    pass
 
 

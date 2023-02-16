@@ -240,9 +240,9 @@ def create_room_worker(room_name):
                 [room_name_or_sid,event_name]=str(message.get('data'),encoding='utf-8').split(" ")
                 #The event_name could be used in  the client side to decide if a new video is being loaded
                 #or to just sync data. 2 events are used instead of only one for convenience on the client side.
-                #event_name could be sync_data or start_video.
+                #event_name could be sync_video or start_video.
                 match event_name:
-                    case "start_video" | "sync_data":
+                    case "start_video" | "sync_video":
                         if worker.current_video:socketio.emit(event_name,
                                     {'current_video':worker.current_video,
                                     'time_stamp':worker.current_video_timestamp},

@@ -276,12 +276,9 @@ def create_room_worker(room_name):
     
     
     
-    print(vars(pubsub.connection_pool))
-    redis_client.close()
-    pubsub.close()
-    pubsub.quit()   
     
-    print(vars(pubsub))
+    pubsub.close() 
+    
     worker.stop_work()
     try:
         #problem: if redis fails the room queue will persist in database with no way to delete.

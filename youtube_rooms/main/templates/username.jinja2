@@ -12,6 +12,7 @@
     
     <div class="container">
         <div class="logo"><b>Youtube rooms</b></div>
+        <div class="title">Enter username </div>
         <div class="error"> 
             {% if get_flashed_messages()%}
             {%for message in get_flashed_messages()%}
@@ -27,8 +28,8 @@
         </div>
         <form id="form" method="POST" action=''>
             {{form.hidden_tag()}}
-            {{form.name(class_="form__input",placeholder="Enter room name")}}
-            {{form.submit(class_="form__submit",value='Create room')}}
+            {{form.name(class_="form__input",placeholder="Enter username")}}
+            {{form.submit(class_="form__submit",value='Join room')}}
         </form>
     </div>
 

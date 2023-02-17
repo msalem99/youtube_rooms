@@ -1,5 +1,5 @@
 from youtube_rooms import init_app,socketio
-from redis import RedisError
+from gevent import monkey; monkey.patch_all();
 
 app=init_app()
 

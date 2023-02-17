@@ -10,7 +10,7 @@ import re
         
         
         
-class create_room(FlaskForm):
+class my_form(FlaskForm):
   
     name = StringField('Name', validators=[DataRequired(),
         Length(min=4, max=20)])
@@ -22,10 +22,13 @@ class create_room(FlaskForm):
    
         
     def validate_name(self,form):
-        regex = re.compile('[@_!#$%^&*()<>?/\|}{~:]')
+        regex = re.compile('[@_!#$%^&*()<>?/\|}{~:-]')
         if not regex.search(self.name.data) == None:
             raise ValidationError(self.myParam+" can not contain special characters.")
-        
+        if self.name.data.lower().strip() == "room":
+            raise ValidationError("Room is a reserved word.")
+        if " " in self.name.data.lower().strip():
+            raise ValidationError("Name can not contain spaces.")
 class csrf(FlaskForm):
     pass
 

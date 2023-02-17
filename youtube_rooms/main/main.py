@@ -1,11 +1,11 @@
 from gevent import monkey,sleep,kill; monkey.patch_all();
 from flask import Blueprint,render_template,session,url_for,redirect,request,flash,abort,copy_current_request_context,current_app
-from .forms import create_room,csrf
+from .forms import my_form
 from flask_wtf.csrf import generate_csrf
 from flask_socketio import emit, join_room, leave_room,Namespace,disconnect,close_room
 from .. import socketio
 from .. import redis_client
-from ..helper_functions import get_duration,get_current_time
+from ..helper_functions import get_duration,get_current_time,pick_user_color
 from functools import wraps
 from inspect import getfullargspec
 from flask_session import sessions
@@ -42,10 +42,10 @@ def check_if_member_of_room(argument_name):
 
 @main_bp.route('/',methods=['POST','GET'])
 def index():
-    form=create_room('Room name')
+    form=my_form('Room name')
     
     if form.validate_on_submit():
-        room_name=form.name.data+"-room"
+        room_name=form.name.data.strip()+"-room"
         try:
             if not redis_client.exists(room_name):
                 #create a set with 1 empty member
@@ -55,8 +55,9 @@ def index():
                 redis_client.expire(room_name,500)
                 #start the worker that will be responsible for
                 #synchronization between room members.
-                socketio.start_background_task(target=create_room_worker,room_name=room_name)  
-                return redirect(url_for('.room',room_name=form.name.data))
+                socketio.start_background_task(target=create_room_worker,room_name=room_name)
+              
+                return redirect(url_for('.room',room_name=form.name.data.strip()))
         except RedisError: 
             abort(503,"Service currently down")
         flash("Room name already exists, please try another name.")
@@ -65,17 +66,24 @@ def index():
 @main_bp.route('/room/<string:room_name>',methods=['POST','GET'])
 def room(room_name):
     room_name=room_name+"-room"
-    form=create_room('Username')
+    form=my_form('Username')
     websocket_csrf=generate_csrf()
     session['websocket_csrf']=websocket_csrf
-    if form.validate_on_submit():session['username']=form.name.data
+    if form.validate_on_submit():
+        session['username']=form.name.data.strip()
+        
+        
+        
     
     try:
         if redis_client.exists(room_name):
             if session.get('username') is None:
-                return render_template("main.jinja2",form=form)
+                session['color']=pick_user_color()
+                return render_template("username.jinja2",form=form)
             
-            return render_template('room.jinja2',data = {'username': session.get("username"),'csrf_token':websocket_csrf})
+            return render_template('room.jinja2',data = {'username': session.get("username"),
+                                                         'color':session.get("color"),
+                                                         'csrf_token':websocket_csrf})
     except RedisError: abort(503,"Service currently down")
     abort(404,"Room doesn't exist")
 
@@ -116,10 +124,13 @@ class MyNamespace(Namespace):
         redis_client.publish(room_name,request.sid+" "+"sync_video")
         return
     
-    @check_if_member_of_room('message')                   
+    #@check_if_member_of_room('message')                   
     def on_chat_message(self,message):
         room_name=message.get('room_name')+"-room"
-        emit('chat_message', {'chat_message': message.get('chat_message'),'username':session.get('username')}, to=room_name,include_self=False)
+        emit('chat_message', {'chat_message': message.get('chat_message'),
+                              'username':session.get('username'),
+                              'color':session.get('color')},
+                                to=room_name,include_self=False)
         return
                               
 
@@ -132,6 +143,7 @@ class MyNamespace(Namespace):
         room_name=request.args.get('room_name')+"-room"
         if csrf_token != session.get('websocket_csrf'):
             print("CSRF ERROR")
+
             disconnect(request.sid)
             return
         #Make sure the room exists
@@ -182,7 +194,7 @@ def leave_redis_room(sid,room_name):
         
         redis_client.srem(room_name,sid)
         if redis_client.scard(room_name) == 1:
-            redis_client.expire(room_name,500)
+            redis_client.expire(room_name,10)
         
         
         return
@@ -261,7 +273,15 @@ def create_room_worker(room_name):
     #worker is also terminated by deleting the room queue then pushing
     #a flag "END_THREAD" that will enable the synchronization worker to
     #exit the loop and join()
+    
+    
+    
+    print(vars(pubsub.connection_pool))
+    redis_client.close()
     pubsub.close()
+    pubsub.quit()   
+    
+    print(vars(pubsub))
     worker.stop_work()
     try:
         #problem: if redis fails the room queue will persist in database with no way to delete.
@@ -270,6 +290,7 @@ def create_room_worker(room_name):
         synch_worker.join()
     except RedisError:
         synch_worker.kill()
+
     print("Workers successfully terminated")
     
     

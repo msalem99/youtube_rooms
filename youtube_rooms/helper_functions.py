@@ -4,7 +4,7 @@ from os import environ
 import re
 import isodate
 import time
-
+import random
 
 key = environ.get('YOUTUBE_API_KEY')  
 
@@ -41,3 +41,9 @@ def get_duration(url):
 def get_current_time():
     return float(time.time())
 
+def pick_user_color():
+    colors=['maroon','red','purple','fuchsia','green','lime'
+            ,'olive','yellow','navy','blue','teal','aqua']
+    return random.choice(colors)
+    
+    

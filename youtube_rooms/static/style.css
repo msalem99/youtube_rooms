@@ -1,0 +1,153 @@
+@import url("https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap");
+@import url(//fonts.googleapis.com/css?family=Vibur);
+*,
+*:before,
+*:after {
+  box-sizing: border-box;
+}
+
+html,
+body,
+div,
+span,
+applet,
+object,
+iframe,
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+p,
+blockquote,
+pre,
+a,
+abbr,
+acronym,
+address,
+big,
+cite,
+code,
+del,
+dfn,
+em,
+img,
+ins,
+kbd,
+q,
+s,
+samp,
+small,
+strike,
+strong,
+sub,
+sup,
+tt,
+var,
+b,
+u,
+i,
+center,
+dl,
+dt,
+dd,
+fieldset,
+form,
+label,
+legend,
+table,
+caption,
+tbody,
+tfoot,
+thead,
+tr,
+th,
+td,
+article,
+aside,
+canvas,
+details,
+embed,
+figure,
+figcaption,
+footer,
+header,
+hgroup,
+menu,
+nav,
+output,
+ruby,
+section,
+summary,
+time,
+mark,
+audio,
+video,
+hr {
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+html {
+  scroll-behavior: smooth;
+}
+:root {
+  --font: "Kanit", serif;
+  --font2: "Vibur", cursive;
+  --primary-color: #bc13fe;
+  --secondary-color: #fee;
+  --box-shadow: 0 0 0.2rem #fff, 0 0 0.2rem #fff, 0 0 2rem var(--primary-color),
+    0 0 0.8rem var(--primary-color), 0 0 2.8rem var(--primary-color),
+    inset 0 0 1.3rem var(--primary-color);
+  --text-shadow: 0 -40px 100px, 0 0 2px, 0 0 1em var(--primary-color),
+    0 0 0.5em var(--primary-color), 0 0 0.1em var(--primary-color),
+    0 10px 3px #000;
+}
+
+body {
+  font-family: var(--font);
+  background-color: black;
+  background: url(https://hocothailand.co.th/wp-content/uploads/2019/06/Black-Brick-Wall-Background-dark.jpg)
+    no-repeat center center fixed;
+  background-size: cover;
+  color: white;
+}
+#form {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: baseline;
+}
+.form__input {
+  font-family: cursive;
+  margin-top: 2rem;
+  background-color: transparent;
+  padding: 0.5rem;
+  border: none;
+  border-radius: 2rem;
+  font-size: 1rem;
+  color: white;
+  text-shadow: var(--text-shadow);
+  margin-bottom: 1rem;
+  box-shadow: var(--box-shadow);
+}
+.form__input:focus {
+  outline: none;
+}
+.form__submit {
+  font-family: var(--font2);
+  font-weight: 900;
+  background-color: transparent;
+  padding: 0.5rem;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  font-size: 1rem;
+  transition: 0.2s;
+  cursor: pointer;
+  color: var(--secondary-color);
+  border: 0px;
+}
+.form__submit:hover {
+  text-shadow: var(--text-shadow);
+}

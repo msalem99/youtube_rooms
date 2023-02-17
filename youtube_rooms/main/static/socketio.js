@@ -7,6 +7,8 @@ $(window).bind("pageshow", function (event) {
   }
 });
 $(document).ready(initiateConnection());
+// var offsets = $(".chat__messages").offset();
+// $(".player__div").css("margin-top", offsets.top - 2 * rem());
 
 function initiateConnection() {
   console.log(socket);
@@ -22,7 +24,7 @@ function initiateConnection() {
   window.socket = socket;
 
   socket.on("my_response", function (msg) {
-    $("#log").append("<p>Received: " + msg.data + "</p>");
+    createMessageDiv("ROOM", msg.data);
   });
 
   socket.on("start_video", function (msg) {
@@ -45,7 +47,7 @@ function initiateConnection() {
     return false;
   });
 
-  $("form#broadcast").submit(function (event) {
+  $("form#form").submit(function (event) {
     socket.emit("submit_video_event", {
       data: $("#broadcast_data").val(),
       room_name: room_name,
@@ -54,7 +56,7 @@ function initiateConnection() {
   });
 
   socket.on("chat_message", function (msg) {
-    createMessageDiv(msg.username, msg.chat_message);
+    createMessageDiv(msg.username, msg.chat_message, msg.color);
     console.log(msg);
   });
 
@@ -82,8 +84,6 @@ class youtubeVideo {
   }
   loadVideo() {
     this.player = new YT.Player("player", {
-      height: "600",
-      width: "800",
       videoId: this.videoId,
       playerVars: {
         origin: "https://localhost:5000",
@@ -122,6 +122,7 @@ class youtubeVideo {
   startVideo() {
     this.player.playVideo();
   }
+
   static loadYoutubeApi() {
     if (!window.isYoutubeApiLoaded) {
       $.getScript("https://www.youtube.com/iframe_api", function () {
@@ -131,7 +132,7 @@ class youtubeVideo {
   }
   static removeIframeAndAddEmptyDiv() {
     $("#player").remove();
-    $(".left__side").prepend(
+    $(".player__div").prepend(
       jQuery("<div>", {
         id: "player",
       })
@@ -145,10 +146,12 @@ class youtubeVideo {
 $(".chat__send__message__input").keydown(function (e) {
   if (e.keyCode === 13) {
     //myUsername is sent by the server through the jinja template room.jinja2
-    createMessageDiv(myUsername, $(".chat__send__message__input").val());
+    createMessageDiv(myUsername, $(".chat__send__message__input").val(), color);
     socket.emit("chat_message", {
       chat_message: $(".chat__send__message__input").val(),
+      room_name: room_name,
     });
+    $(".chat__send__message__input").val("")
   }
 });
 
@@ -156,33 +159,49 @@ $(".send__message__svg").click(function (e) {
   //myUsername is sent by the server through the jinja template room.jinja2
   createMessageDiv(myUsername, $(".chat__send__message__input").val());
   socket.emit("chat_message", {
-    chat_message: $(".chat__send__message__input").val(),
+    chat_message: $(".chat__send__message__input").val(""),
     room_name: room_name,
   });
+  $(".chat__send__message__input").val()=""
 });
 
-function createMessageDiv(username, message) {
+function createMessageDiv(username, message, color = "white") {
   //create a div containing 3 spans for the message data
   messageDiv = document.createElement("div");
   jQuery("<span>", {
     class: "message__timestamp",
-    text: getTimestamp(),
+    text: getTimestamp() + " ",
   }).appendTo(messageDiv);
   jQuery("<span>", {
     class: "message__username",
-    text: String(username),
-  }).appendTo(messageDiv);
+    text: String(username) + " : ",
+  })
+    .css("color", color)
+    .appendTo(messageDiv);
+
   jQuery("<span>", {
     class: "message__text",
     text: String(message),
   }).appendTo(messageDiv);
-  console.log(messageDiv);
+  
   $(messageDiv).addClass("chat__message__unit");
   $(messageDiv).appendTo($(".chat__messages"));
+  chatDiv = document.getElementsByClassName("chat__messages")[0];
+  chatDiv.scrollTop = chatDiv.scrollHeight;
 }
 
 function getTimestamp() {
   let currDate = new Date();
-  let hoursMin = currDate.getHours() + ":" + currDate.getMinutes();
+  let colon = ":";
+  minutes = currDate.getMinutes();
+  if (minutes < 10) {
+    colon = ":0";
+  }
+  let hoursMin = currDate.getHours() + colon + currDate.getMinutes();
   return String(hoursMin);
+}
+function rem() {
+  var html = document.getElementsByTagName("html")[0];
+
+  return parseInt(window.getComputedStyle(html)["fontSize"]);
 }

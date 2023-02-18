@@ -1,18 +1,19 @@
 <!DOCTYPE html>
 <html lang="en">
-   
 
-    <head>
-        {% block head %}
-        <link rel="stylesheet" href="{{url_for('static',filename='style.css')}}"/>
-        <link rel="stylesheet" href="{{url_for('.static',filename='main.css')}}"/>
-        {% endblock %}
-      </head>
+
+<head>
+    {% block head %}
+    <link rel="stylesheet" href="{{url_for('static',filename='style.css')}}" />
+    <link rel="stylesheet" href="{{url_for('.static',filename='main.css')}}" />
+    {% endblock %}
+</head>
+
 <body>
-    
+
     <div class="container">
         <div class="logo"><b>Youtube rooms</b></div>
-        <div class="error"> 
+        <div class="error">
             {% if get_flashed_messages()%}
             {%for message in get_flashed_messages()%}
             {{message}}
@@ -34,4 +35,5 @@
 
 
 </body>
+
 </html>

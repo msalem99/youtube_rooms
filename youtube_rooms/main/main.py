@@ -8,7 +8,6 @@ from .. import redis_client
 from ..helper_functions import get_duration,get_current_time,pick_user_color
 from functools import wraps
 from inspect import getfullargspec
-from flask_session import sessions
 from redis import RedisError 
 
 

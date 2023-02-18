@@ -7,8 +7,6 @@ $(window).bind("pageshow", function (event) {
   }
 });
 $(document).ready(initiateConnection());
-// var offsets = $(".chat__messages").offset();
-// $(".player__div").css("margin-top", offsets.top - 2 * rem());
 
 function initiateConnection() {
   console.log(socket);

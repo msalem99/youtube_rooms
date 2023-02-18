@@ -6,15 +6,13 @@ from os import environ
 
 
 #initialize global libraries
-
-#sess=Session()
 socketio = SocketIO()
 redis_client = FlaskRedis()
 def init_app():
     """Initialize the core application."""
     app = Flask(__name__, instance_relative_config=False)
     app.config.from_object('config.DevConfig')
- #   sess.init_app(app)
+
     redis_client.init_app(app)
     
     

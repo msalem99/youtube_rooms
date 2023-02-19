@@ -12,7 +12,7 @@ class Config:
     """Base config."""
     SECRET_KEY = environ.get('SECRET_KEY')
     FLASK_APP = environ.get('FLASK_APP')
-    
+    SOCKETIO_MESSAGE_QUEUE = environ.get('REDIS_OM_URL')
 class ProdConfig(Config):
     FLASK_ENV = 'production'
     DEBUG = False
@@ -20,6 +20,16 @@ class ProdConfig(Config):
 
 
 class DevConfig(Config):
-    TESTING = True
     REDIS_URL=environ.get('REDIS_OM_URL')
     
+    
+class TestingConfig(Config):
+    TESTING = True
+    REDIS_URL=environ.get('TEST_REDIS_OM_URL')
+    SOCKETIO_MESSAGE_QUEUE = None
+    WTF_CSRF_ENABLED = False
+config = {
+    'development': DevConfig,
+    'production': ProdConfig,
+    'testing': TestingConfig
+}

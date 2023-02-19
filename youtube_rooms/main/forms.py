@@ -22,14 +22,11 @@ class my_form(FlaskForm):
    
         
     def validate_name(self,form):
-        regex = re.compile('[@_!#$%^&*()<>?/\|}{~:-]')
-        if not regex.search(self.name.data) == None:
-            raise ValidationError(self.myParam+" can not contain special characters.")
+        regex = re.compile(r'[^A-Za-z0-9]')
+        if regex.search(self.name.data):
+            raise ValidationError(self.myParam+" can not contain spaces or special characters.")
         if self.name.data.lower().strip() == "room":
             raise ValidationError("Room is a reserved word.")
-        if " " in self.name.data.lower().strip():
-            raise ValidationError("Name can not contain spaces.")
-class csrf(FlaskForm):
-    pass
+
 
 

@@ -1,4 +1,5 @@
-from gevent import monkey,sleep,kill; monkey.patch_all();
+from gevent import monkey,sleep,kill,spawn; monkey.patch_all();
+
 from flask import Blueprint,render_template,session,url_for,redirect,request,flash,abort,copy_current_request_context,current_app
 from .forms import my_form
 from flask_wtf.csrf import generate_csrf
@@ -42,7 +43,7 @@ def check_if_member_of_room(argument_name):
 @main_bp.route('/',methods=['POST','GET'])
 def index():
     form=my_form('Room name')
-    
+    if form.name.data: form.name.data=form.name.data.strip()
     if form.validate_on_submit():
         room_name=form.name.data.strip()+"-room"
         try:
@@ -54,10 +55,10 @@ def index():
                 redis_client.expire(room_name,500)
                 #start the worker that will be responsible for
                 #synchronization between room members.
-                socketio.start_background_task(target=create_room_worker,room_name=room_name)
-              
+                func=copy_current_request_context(create_room_worker)
+                my_worker=spawn(func,room_name=room_name)
                 return redirect(url_for('.room',room_name=form.name.data.strip()))
-        except RedisError: 
+        except RedisError as e:
             abort(503,"Service currently down")
         flash("Room name already exists, please try another name.")
     return render_template('main.jinja2',form=form)
@@ -163,7 +164,7 @@ class MyNamespace(Namespace):
             disconnect(request.sid)
             print(request.sid+' disconnected')
             return
-    
+
 
 socketio.on_namespace(MyNamespace('/'))
 
@@ -186,14 +187,14 @@ def join_redis_room(sid,room_name):
         
         return
 
-    
+
 #If room is empty, it will expire after 500 seconds, unless a user joins and the expiry is removed.
 def leave_redis_room(sid,room_name):
         
         
         redis_client.srem(room_name,sid)
         if redis_client.scard(room_name) == 1:
-            redis_client.expire(room_name,10)
+            redis_client.expire(room_name,500)
         
         
         return
@@ -234,7 +235,8 @@ def create_room_worker(room_name):
         pubsub.subscribe({room_name})
     except RedisError:
         return
-    synch_worker=socketio.start_background_task(target=worker.work)    
+    func3=copy_current_request_context(worker.work)
+    synch_worker=spawn(func3)  
     while True:
         sleep(0.01)
         try:
@@ -275,10 +277,10 @@ def create_room_worker(room_name):
     
     
     
-    
+    print(vars(redis_client._redis_client.connection_pool))
     pubsub.close() 
-    
     worker.stop_work()
+    
     try:
         #problem: if redis fails the room queue will persist in database with no way to delete.
         redis_client.delete(room_name+"-queue")
@@ -286,7 +288,8 @@ def create_room_worker(room_name):
         synch_worker.join()
     except RedisError:
         synch_worker.kill()
-
+    
+    
     print("Workers successfully terminated")
     
     

@@ -3,12 +3,9 @@ from gevent import monkey,sleep,kill,spawn; monkey.patch_all();
 from flask import Blueprint,render_template,session,url_for,redirect,request,flash,abort,copy_current_request_context,current_app
 from .forms import my_form
 from flask_wtf.csrf import generate_csrf
-from flask_socketio import emit, join_room, leave_room,Namespace,disconnect,close_room
-from .. import socketio
-from .. import redis_client
-from ..helper_functions import get_duration,get_current_time,pick_user_color
-from functools import wraps
-from inspect import getfullargspec
+from flask_socketio import emit, join_room,Namespace,disconnect
+from .. import socketio,redis_client
+from ..helper_functions import get_duration,get_current_time,pick_user_color,check_if_member_of_room
 from redis import RedisError 
 
 
@@ -18,25 +15,7 @@ main_bp=Blueprint(
     static_folder='static',
     static_url_path="/main/static")
 
-#decorators
-#This decorator ensures that the user is a member of the room. This is done
-#to prevent users from connecting then sending data to what may be other rooms.
-def check_if_member_of_room(argument_name):
-    def decorator(f):
-        argspec = getfullargspec(f)
-        argument_index = argspec.args.index(argument_name)
-        @wraps(f)
-        def wrapper(*args, **kwargs):
-            try:
-                message = args[argument_index]
-            except IndexError:
-                message = kwargs[argument_name]
-            room_name=message.get('room_name')+"-room"
-            if redis_client.smismember(room_name,request.sid)!=[1]:
-               disconnect(request.sid)
-            return f(*args, **kwargs)
-        return wrapper
-    return decorator
+
 
 #http routes
 
@@ -52,16 +31,17 @@ def index():
                 #set expiration time, this expiration is
                 #removed once a user joins the room.
                 redis_client.sadd(room_name,' ')
-                redis_client.expire(room_name,500)
+                redis_client.expire(room_name,current_app.config["ROOM_EXPIRATION_TIME"])
                 #start the worker that will be responsible for
                 #synchronization between room members.
                 func=copy_current_request_context(create_room_worker)
-                my_worker=spawn(func,room_name=room_name)
+                spawn(func,room_name=room_name)
                 return redirect(url_for('.room',room_name=form.name.data.strip()))
         except RedisError as e:
             abort(503,"Service currently down")
         flash("Room name already exists, please try another name.")
     return render_template('main.jinja2',form=form)
+
 
 @main_bp.route('/room/<string:room_name>',methods=['POST','GET'])
 def room(room_name):
@@ -71,10 +51,6 @@ def room(room_name):
     session['websocket_csrf']=websocket_csrf
     if form.validate_on_submit():
         session['username']=form.name.data.strip()
-        
-        
-        
-    
     try:
         if redis_client.exists(room_name):
             if session.get('username') is None:
@@ -124,7 +100,7 @@ class MyNamespace(Namespace):
         redis_client.publish(room_name,request.sid+" "+"sync_video")
         return
     
-    #@check_if_member_of_room('message')                   
+    @check_if_member_of_room('message')                   
     def on_chat_message(self,message):
         room_name=message.get('room_name')+"-room"
         emit('chat_message', {'chat_message': message.get('chat_message'),
@@ -136,8 +112,6 @@ class MyNamespace(Namespace):
 
         
     def on_connect(self):
-        
-        
        #csrf token checking
         csrf_token=request.args.get('websocket_csrf')
         room_name=request.args.get('room_name')+"-room"
@@ -176,7 +150,6 @@ socketio.on_namespace(MyNamespace('/'))
 
 #join the room and send video data to the user that just joined.
 def join_redis_room(sid,room_name):
- 
        
         pipe=redis_client.pipeline()
         redis_client.persist(room_name)
@@ -184,19 +157,17 @@ def join_redis_room(sid,room_name):
         redis_client.publish(room_name,sid+" "+"start_video")
         pipe.execute()
         
-        
         return
 
 
-#If room is empty, it will expire after 500 seconds, unless a user joins and the expiry is removed.
+#If room is empty, it will expire after a specific time set by ROOM_EXPIRATION_TIME in the config 
+#unless a user joins and the expiry is removed.
 def leave_redis_room(sid,room_name):
-        
-        
+    
         redis_client.srem(room_name,sid)
         if redis_client.scard(room_name) == 1:
-            redis_client.expire(room_name,500)
-        
-        
+            redis_client.expire(room_name,current_app.config["ROOM_EXPIRATION_TIME"])
+            
         return
 
      
@@ -225,7 +196,6 @@ def leave_redis_room(sid,room_name):
 
 def create_room_worker(room_name):
     worker=SynchronizationWorker(room_name)
-    
     try:
         pubsub = redis_client.pubsub(ignore_subscribe_messages=True)
         #listen to redis for expiration of keys, if a room expires
@@ -265,19 +235,12 @@ def create_room_worker(room_name):
                         join_redis_room(room_name_or_sid,worker.room_name)
                     case "leave_room":
                         leave_redis_room(room_name_or_sid,worker.room_name)
- 
-                      
-           
-            
+
         
     #Once the create room worker loop terminates, the synchronization
     #worker is also terminated by deleting the room queue then pushing
     #a flag "END_THREAD" that will enable the synchronization worker to
     #exit the loop and join()
-    
-    
-    
-    print(vars(redis_client._redis_client.connection_pool))
     pubsub.close() 
     worker.stop_work()
     
@@ -287,7 +250,7 @@ def create_room_worker(room_name):
         redis_client.lpush(room_name+"-queue","END_THREAD")
         synch_worker.join()
     except RedisError:
-        synch_worker.kill()
+        kill(synch_worker)
     
     
     print("Workers successfully terminated")

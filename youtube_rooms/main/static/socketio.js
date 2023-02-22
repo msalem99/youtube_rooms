@@ -1,6 +1,5 @@
 $(window).bind("pageshow", function (event) {
   if (event.originalEvent.persisted) {
-    console.log("test");
     socket.disconnect();
     socket = null;
     initiateConnection();
@@ -9,9 +8,9 @@ $(window).bind("pageshow", function (event) {
 $(document).ready(initiateConnection());
 
 function initiateConnection() {
-  console.log(socket);
+
   room_name = decodeURI(window.location.pathname.split("/").at(-1));
-  console.log(window.location.host);
+
   var socket = io(
     `${window.location.host}?room_name=${room_name}&websocket_csrf=${websocket_csrf}`,
     {
@@ -36,12 +35,13 @@ function initiateConnection() {
       youtubeVideo.loadYoutubeApi();
     }
   });
+
   socket.on("sync_video", function (msg) {
     video.goTo(msg.time_stamp);
   });
+
   $("form#emit").submit(function (event) {
     socket.emit("my_event", { room_name: room_name });
-
     return false;
   });
 
@@ -55,7 +55,6 @@ function initiateConnection() {
 
   socket.on("chat_message", function (msg) {
     createMessageDiv(msg.username, msg.chat_message, msg.color);
-    console.log(msg);
   });
 
   socket.on("connect", function () {
@@ -72,7 +71,6 @@ function initiateConnection() {
 /////////////////////////////////////////////////////////////////////////
 class youtubeVideo {
   constructor(videoId, videoTimeStamp, socket) {
-    console.log(videoId);
     this.socket = socket;
     this.player = null;
     this.videoId = videoId;

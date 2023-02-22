@@ -17,11 +17,11 @@ class ProdConfig(Config):
     FLASK_ENV = 'production'
     DEBUG = False
     TESTING = False
-
+    ROOM_EXPIRATION_TIME=500
 
 class DevConfig(Config):
     REDIS_URL=environ.get('REDIS_OM_URL')
-    
+    ROOM_EXPIRATION_TIME=100
     
 class TestingConfig(Config):
     TESTING = True

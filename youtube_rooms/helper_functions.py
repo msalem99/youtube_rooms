@@ -5,6 +5,10 @@ import re
 import isodate
 import time
 import random
+from functools import wraps
+from inspect import getfullargspec
+from . import socketio,redis_client
+from flask import request
 
 key = environ.get('YOUTUBE_API_KEY')  
 
@@ -46,4 +50,22 @@ def pick_user_color():
             ,'olive','yellow','navy','blue','teal','aqua']
     return random.choice(colors)
     
-    
+#decorators
+#This decorator ensures that the user is a member of the room. This is done
+#to prevent users from connecting then sending data to what may be other rooms.
+def check_if_member_of_room(argument_name):
+    def decorator(f):
+        argspec = getfullargspec(f)
+        argument_index = argspec.args.index(argument_name)
+        @wraps(f)
+        def wrapper(*args, **kwargs):
+            try:
+                message = args[argument_index]
+            except IndexError:
+                message = kwargs[argument_name]
+            room_name=message.get('room_name')+"-room"
+            if redis_client.smismember(room_name,request.sid)!=[1]:
+               socketio.disconnect(request.sid)
+            return f(*args, **kwargs)
+        return wrapper
+    return decorator    
